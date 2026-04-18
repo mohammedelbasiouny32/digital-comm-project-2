@@ -1,0 +1,184 @@
+% Project 3: Matched Filters, Correlators, ISI, and raised cosine filters
+clear; clc; close all;
+
+%% 1- Matched filters and correlators in noise free environment
+
+% a. Generate an array consisting of 10 bits
+num_bits = 10;
+bits = randi([0 1], 1, num_bits); % Generate 10 random binary bits
+
+% b. Convert the bit stream to +1's, -1's
+symbols = 2*bits - 1;
+
+% c. Generate impulses every Ts (upsampling)
+% There should be 4 zeros between non-zero samples (5 samples total per symbol)
+upsampled_symbols = upsample(symbols, 5); 
+
+% d. Convolve with discrete pulse shaping function
+p = [5 4 3 2 1] / sqrt(55); % Given pulse, energy normalized
+y = conv(upsampled_symbols, p); % Output of transmitter
+
+% e. Apply filters
+% i. Filter matched to p[n]
+h_matched = fliplr(p); 
+out_matched = conv(y, h_matched);
+
+% ii. The rectangular filter (sampled and energy normalized)
+h_rect = [1 1 1 1 1] / sqrt(5); % 5 samples of 1, normalized to unit energy
+out_rect = conv(y, h_rect);
+
+% Requirement 1a: Plot both filters on two subplots
+figure('Name', 'Requirement 1a: Filter Outputs');
+subplot(2,1,1);
+plot(out_matched, 'b', 'LineWidth', 1.5);
+title('Output of Matched Filter');
+xlabel('Samples'); ylabel('Amplitude');
+grid on;
+
+subplot(2,1,2);
+plot(out_rect, 'r', 'LineWidth', 1.5);
+title('Output of Rectangular Filter');
+xlabel('Samples'); ylabel('Amplitude');
+grid on;
+
+% Requirement 1b: Matched filter and Correlator on same plot
+% Correlator implementation (Integrate and Dump)
+num_samples = num_bits * 5; % Number of samples for our symbols
+out_corr_continuous = zeros(1, length(y));
+
+for i = 1:5:(length(y)-4)
+    % 1. Multiply the incoming signal by the local pulse p[n]
+    integrand = y(i:i+4) .* p;
+    % 2. Integrate (using cumulative sum over the symbol period Ts)
+    out_corr_continuous(i:i+4) = cumsum(integrand);
+    % 3. "Dump" happens naturally as the loop resets the sum for the next 5 samples
+end
+
+% Plotting to perfectly match the specific project/TA plot style
+figure('Name', 'Requirement 1b: Matched Filter vs Correlator');
+
+% Plot Matched Filter Output (Solid Blue)
+plot(out_matched(1:num_samples), 'b', 'LineWidth', 1.5);
+hold on;
+
+% Plot Correlator "Integrate" process (Dashed Green)
+plot(out_corr_continuous(1:num_samples), 'g--', 'LineWidth', 2);
+
+% Plot Correlator "Dump/Sample" instances (Black Dots)
+sample_indices = 5:5:num_samples;
+plot(sample_indices, out_corr_continuous(sample_indices), 'ko', 'MarkerFaceColor', 'k');
+
+title('Matched Filter vs. Correlator Output');
+xlabel('Index (n)'); 
+ylabel('Amplitude');
+legend('Matched Filter Output', 'Correlator Output', 'Sampling / Dump Instants');
+grid on;
+
+
+%% 2- Noise analysis
+
+% a. Generate 10000 bits instead of 10
+num_bits2 = 10000;
+bits2 = randi([0 1], 1, num_bits2);
+symbols2 = 2*bits2 - 1;
+upsampled_symbols2 = upsample(symbols2, 5);
+y2 = conv(upsampled_symbols2, p);
+
+% Eb/N0 setup
+EbN0_dB = -2:1:5; % from -2dB to 5dB in 1dB steps
+Eb = 1; % Pulse energy is normalized to 1
+
+BER_matched = zeros(1, length(EbN0_dB));
+BER_rect = zeros(1, length(EbN0_dB));
+
+for k = 1:length(EbN0_dB)
+    
+    % Calculate N0
+    N0 = Eb / (10^(EbN0_dB(k)/10));
+    
+    % b. Generate AWGN
+    noise = randn(1, length(y2));
+    
+    % c. Scale the noise to variance N0/2
+    noise = noise * sqrt(N0/2);
+    
+    % d. Add noise to transmitted sequence
+    v = y2 + noise;
+    
+    % --- Matched Filter Receiver ---
+    mf_out2 = conv(v, h_matched); 
+    sampled_mf = mf_out2(5:5:end); % Sample every Ts (5 samples)
+    sampled_mf = sampled_mf(1:num_bits2); % make sure lengths match
+    
+    % Check for errors
+    detected_bits_mf = sampled_mf > 0;
+    errors_mf = sum(detected_bits_mf ~= bits2);
+    BER_matched(k) = errors_mf / num_bits2; % calculate probability of error
+    
+    % --- Rectangular Filter Receiver ---
+    rect_out2 = conv(v, h_rect);
+    sampled_rect = rect_out2(5:5:end);
+    sampled_rect = sampled_rect(1:num_bits2);
+    
+    % Check for errors
+    detected_bits_rect = sampled_rect > 0;
+    errors_rect = sum(detected_bits_rect ~= bits2);
+    BER_rect(k) = errors_rect / num_bits2;
+    
+end
+
+% Theoretical BER
+EbN0_linear = 10.^(EbN0_dB/10);
+BER_theory = 0.5 * erfc(sqrt(EbN0_linear)); 
+
+% Requirement 2: Plot BER curves
+figure('Name', 'Requirement 2: BER vs Eb/N0');
+semilogy(EbN0_dB, BER_matched, 'b-o', 'LineWidth', 1.5);
+hold on;
+semilogy(EbN0_dB, BER_rect, 'r-*', 'LineWidth', 1.5);
+semilogy(EbN0_dB, BER_theory, 'k--', 'LineWidth', 1.5);
+title('BER vs Eb/N0');
+xlabel('Eb/N0 (dB)');
+ylabel('Bit Error Rate (BER)');
+legend('Matched Filter', 'Rectangular filter', 'Theoretical');
+grid on;
+
+
+%% 3- ISI and raised cosine
+
+% Generate 100 bits
+bits3 = randi([0 1], 1, 100);
+symbols3 = 2*bits3 - 1;
+upsampled_data3 = upsample(symbols3, 5); % 5 samples per symbol
+
+% Cases to test: [R, delay]
+% a- R=0, delay=2
+% b- R=0, delay=8
+% c- R=1, delay=2
+% d- R=1, delay=8
+R_vals = [0, 0, 1, 1];
+delay_vals = [2, 8, 2, 8];
+
+for c = 1:4
+    R = R_vals(c);
+    delay = delay_vals(c);
+    
+    % Generate filter using modern rcosdesign command
+    h_txrx = rcosdesign(R, delay*2, 5, 'sqrt'); 
+    
+    % Point A: After Tx filter
+    point_A = conv(upsampled_data3, h_txrx);
+    
+    % Point B: After Rx filter
+    % Ideal Noise-free channel means we just convolve again
+    point_B = conv(point_A, h_txrx);
+    
+    % Requirement 3: Plot Eye Patterns
+    eyediagram(point_A, 10);
+    title(['Point A (Tx Out): R = ', num2str(R), ', delay = ', num2str(delay)]);
+    
+    eyediagram(point_B, 10);
+    title(['Point B (Rx Out): R = ', num2str(R), ', delay = ', num2str(delay)]);
+end
+
+disp('Project simulation completed successfully!');
