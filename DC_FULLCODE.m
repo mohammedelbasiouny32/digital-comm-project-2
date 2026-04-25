@@ -1,6 +1,6 @@
 % =========================================================================
 % --- Digital Communication ---
-% --- Project 3: Matched Filters, Correlators, ISI, and Raised Cosine ---
+% --- Project 3 ---
 % =========================================================================
 
 clc;
@@ -12,25 +12,22 @@ close all;
 % =========================================================================
 disp('Running Requirement 1: Noise-Free Environment...');
 
-N_req1 = 10;                     % Number of bits
-samples_per_sym_req1 = 5;        % 5 samples per symbol (200 ms spacing for Ts = 1s)
+N_req1 = 10;                   
+samples_per_sym_req1 = 5;        
 
-% a) Generate 10 random bits and b) Convert to polar (+1, -1)
 bits_req1 = randi([0 1], 1, N_req1);
 symbols_req1 = 2 * bits_req1 - 1;
 
-% c) Generate an impulse train
 impulses_req1 = upsample(symbols_req1, samples_per_sym_req1);
 
 % d) Transmitted Signal
-p = [5 4 3 2 1] / sqrt(55);      % Normalized discrete pulse shape
+p = [5 4 3 2 1] / sqrt(55);      
 y_req1 = conv(impulses_req1, p);
-y_req1 = y_req1(1 : N_req1*samples_per_sym_req1); % Truncate tail
+y_req1 = y_req1(1 : N_req1*samples_per_sym_req1); 
 
 % e) Receiver Filters
-h_mf = fliplr(p);                % Matched filter
-h_rect = ones(1, samples_per_sym_req1) / sqrt(samples_per_sym_req1); % Rectangular filter
-
+h_mf = fliplr(p);                
+h_rect = ones(1, samples_per_sym_req1) / sqrt(samples_per_sym_req1); 
 out_mf_req1 = conv(y_req1, h_mf);
 out_rect_req1 = conv(y_req1, h_rect);
 sampling_instants_req1 = samples_per_sym_req1 : samples_per_sym_req1 : (N_req1 * samples_per_sym_req1);
@@ -67,10 +64,10 @@ legend('Matched Filter', 'Correlator', 'Sampling Instants', 'Location', 'Best');
 % =========================================================================
 disp('Running Requirement 2: Noise Analysis...');
 
-N_req2 = 10000;                  % Generate 10000 bits
-samples_per_sym_req2 = 5;        % 5 samples per symbol
+N_req2 = 10000;                  
+samples_per_sym_req2 = 5;        
 
-% Generate bits and sequence
+
 bits_req2 = randi([0 1], 1, N_req2);
 symbols_req2 = 2 * bits_req2 - 1;
 impulses_req2 = upsample(symbols_req2, samples_per_sym_req2);
@@ -78,7 +75,7 @@ impulses_req2 = upsample(symbols_req2, samples_per_sym_req2);
 y_req2 = conv(impulses_req2, p);
 y_req2 = y_req2(1 : N_req2*samples_per_sym_req2); 
 
-% Setup Noise Analysis
+
 Eb = 1; 
 EbN0_dB = -2:1:5;
 BER_mf = zeros(size(EbN0_dB));
@@ -124,8 +121,8 @@ legend('Theoretical BER', 'Matched Filter BER', 'Rectangular Filter BER', 'Locat
 % =========================================================================
 disp('Running Requirement 3: Eye Diagrams (This may generate several windows)...');
 
-N_req3 = 100;                    % Number of data bits
-samples_per_sym_req3 = 8;        % Oversampling factor
+N_req3 = 100;                    
+samples_per_sym_req3 = 8;        
 
 bits_req3 = randi([0 1], 1, N_req3);
 symbols_req3 = 2 * bits_req3 - 1;
