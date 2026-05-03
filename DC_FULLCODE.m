@@ -58,6 +58,31 @@ stem(sampling_instants_req1, out_corr(sampling_instants_req1), 'k', 'filled', 'L
 title('Matched Filter vs. Correlator Output'); grid on;
 legend('Matched Filter', 'Correlator', 'Sampling Instants', 'Location', 'Best');
 
+% --- Explicit Plot: Before and After the Sampler ---
+figure('Name', 'Requirement 1c: Before and After Sampler', 'NumberTitle', 'off');
+
+% Case 1: Matched Filter (Block Diagram 1)
+subplot(2,1,1);
+% 1. Before Sampler (Output of Filter h(t))
+plot(out_mf_req1(1:length(y_req1)), 'b', 'LineWidth', 1.5); hold on; 
+% 2. After Sampler (Sample every Ts)
+stem(sampling_instants_req1, out_mf_req1(sampling_instants_req1), 'k', 'filled', 'LineWidth', 1.5); 
+title('Case 1: Matched Filter - Before and After Sampler');
+xlabel('Samples (n)'); ylabel('Amplitude');
+legend('Before Sampler (Continuous Filter Output)', 'After Sampler (Discrete Values)', 'Location', 'Best');
+grid on;
+
+% Case 2: Correlator (Block Diagram 2)
+subplot(2,1,2);
+% 1. Before Sampler (Output of "Integrate" block)
+plot(out_corr, 'g--', 'LineWidth', 2); hold on; 
+% 2. After Sampler (Output of "Dump" / Sample every Ts)
+stem(sampling_instants_req1, out_corr(sampling_instants_req1), 'k', 'filled', 'LineWidth', 1.5); 
+title('Case 2: Correlator - Before and After Sampler');
+xlabel('Samples (n)'); ylabel('Amplitude');
+legend('Before Sampler (Continuous Integration)', 'After Sampler (Dumped Discrete Values)', 'Location', 'Best');
+grid on;
+
 
 %% ========================================================================
 % --- REQUIREMENT 2: Noise Analysis & BER ---
